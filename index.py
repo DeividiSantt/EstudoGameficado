@@ -1,10 +1,11 @@
 import time
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 DATA_FILE = "progresso.json"
-MARCOS = [10, 15, 20, 30, 50, 100, 200, 300, 500, 1000]  # em horas
+# Marcos a cada 1 hora até 1000h (pode mudar se quiser)
+MARCOS = list(range(1, 1001))  
 
 def limpar_terminal():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -15,7 +16,9 @@ def carregar_dados():
             "total_segundos": 0,
             "gemas": 0,
             "recompensas_conquistadas": [],
-            "sessoes": []
+            "sessoes": [],
+            "exercicios": 0,
+            "projetos": 0
         }
     with open(DATA_FILE, "r") as f:
         return json.load(f)
@@ -28,6 +31,16 @@ def formatar_tempo(segundos):
     horas = int(segundos // 3600)
     minutos = int((segundos % 3600) // 60)
     return f"{horas}h {minutos}min"
+
+def calcular_horas_semana(dados):
+    agora = datetime.now()
+    inicio_semana = agora - timedelta(days=agora.weekday())  # Segunda-feira
+    total_segundos = 0
+    for sessao in dados["sessoes"]:
+        inicio = datetime.fromisoformat(sessao["inicio"])
+        if inicio >= inicio_semana:
+            total_segundos += sessao["duracao_segundos"]
+    return total_segundos
 
 def estudar():
     print("\n📚 Iniciando sessão de estudo. Pressione ENTER para encerrar.")
@@ -55,26 +68,36 @@ def estudar():
 
     if novas_recompensas:
         for r in novas_recompensas:
-            print(f"🎉 Parabéns! Você atingiu o marco de {r} horas!")
+            print(f"🎉 Parabéns! Você atingiu o marco de {r} hora(s)!")
         dados["recompensas_conquistadas"].extend(novas_recompensas)
         dados["gemas"] += len(novas_recompensas)
         print(f"💎 Você ganhou {len(novas_recompensas)} gema(s)!")
 
     salvar_dados(dados)
-    print(f"⏱️ Tempo total estudado: {total_horas:.2f} horas.")
+    print(f"⏱️ Tempo total estudado: {formatar_tempo(dados['total_segundos'])}")
 
 def ver_historico():
     dados = carregar_dados()
     print("\n--- HISTÓRICO DE SESSÕES ---")
-    for i, sessao in enumerate(dados["sessoes"], 1):
-        inicio = datetime.fromisoformat(sessao["inicio"]).strftime("%d/%m/%Y %H:%M")
-        fim = datetime.fromisoformat(sessao["fim"]).strftime("%H:%M")
-        duracao = formatar_tempo(sessao["duracao_segundos"])
-        print(f"{i}. {inicio} - {fim} ({duracao})")
+    if not dados["sessoes"]:
+        print("Nenhuma sessão registrada ainda.")
+    else:
+        for i, sessao in enumerate(dados["sessoes"], 1):
+            inicio = datetime.fromisoformat(sessao["inicio"]).strftime("%d/%m/%Y %H:%M")
+            fim = datetime.fromisoformat(sessao["fim"]).strftime("%H:%M")
+            duracao = formatar_tempo(sessao["duracao_segundos"])
+            print(f"{i}. {inicio} - {fim} ({duracao})")
+
+    horas_semana_segundos = calcular_horas_semana(dados)
+    horas_semana = int(horas_semana_segundos // 3600)
+    minutos_semana = int((horas_semana_segundos % 3600) // 60)
 
     print(f"\n⏳ Total estudado: {formatar_tempo(dados['total_segundos'])}")
+    print(f"📆 Horas estudadas nesta semana: {horas_semana}h {minutos_semana}min")
     print(f"💎 Gemas disponíveis: {dados['gemas']}")
     print(f"🏆 Recompensas conquistadas: {dados['recompensas_conquistadas']}")
+    print(f"📝 Exercícios feitos: {dados['exercicios']}")
+    print(f"🚀 Projetos feitos: {dados['projetos']}")
 
 def trocar_gemas():
     dados = carregar_dados()
@@ -105,15 +128,64 @@ def trocar_gemas():
     else:
         print("Opção inválida.")
 
+def registrar_bonus():
+    dados = carregar_dados()
+    print("\n📝 Registrar exercícios e projetos concluídos.")
+    try:
+        ex = int(input("Quantos exercícios você fez? "))
+        pr = int(input("Quantos projetos você fez? "))
+        if ex < 0 or pr < 0:
+            print("Número inválido, use valores positivos.")
+            return
+    except ValueError:
+        print("Entrada inválida, digite números inteiros.")
+        return
+
+    dados["exercicios"] += ex
+    dados["projetos"] += pr
+
+    # Calcular gemas bônus
+    gemas_bonus = ex * 0.2 + pr * 3
+    gemas_bonus_int = int(gemas_bonus)  # Só inteiros
+    if gemas_bonus_int > 0:
+        dados["gemas"] += gemas_bonus_int
+        print(f"🎉 Você ganhou {gemas_bonus_int} gema(s) de bônus!")
+
+    salvar_dados(dados)
+
+def sincronizar_gemas(dados):
+ 
+    total_horas = dados["total_segundos"] / 3600
+
+    novos = [m for m in MARCOS 
+             if m <= total_horas and m not in dados["recompensas_conquistadas"]]
+    if novos:
+        dados["recompensas_conquistadas"].extend(novos)
+        dados["gemas"] += len(novos)
+        salvar_dados(dados)
+        print(f"🔄 Sincronização: adicionadas {len(novos)} gema(s) pelos marcos antigos: {novos}")
+
+
 def menu():
     while True:
         limpar_terminal()
+        dados = carregar_dados()
+        sincronizar_gemas(dados)   # <== ESSA LINHA É IMPORTANTE
+        horas_total = int(dados['total_segundos'] // 3600)
+        minutos_total = int((dados['total_segundos'] % 3600) // 60)
+
         print("\n=== MENU ===")
         print("1. Iniciar sessão de estudo")
         print("2. Ver histórico")
         print("3. Trocar gemas por recompensa")
-        print("4. Sair")
-        opcao = input("Escolha: ")
+        print("4. Registrar exercícios/projetos concluídos")
+        print("5. Sair")
+
+        print(f"\n⏳ Total acumulado: {horas_total}h {minutos_total}min")
+        print(f"💎 Gemas disponíveis: {dados['gemas']}")
+        print(f"📝 Exercícios: {dados['exercicios']} | 🚀 Projetos: {dados['projetos']}")
+
+        opcao = input("\nEscolha: ")
 
         if opcao == "1":
             estudar()
@@ -125,11 +197,15 @@ def menu():
             trocar_gemas()
             input("\nPressione ENTER para voltar ao menu.")
         elif opcao == "4":
+            registrar_bonus()
+            input("\nPressione ENTER para voltar ao menu.")
+        elif opcao == "5":
             print("👋 Até a próxima! Continue focado!")
             break
         else:
             print("Opção inválida.")
             input("\nPressione ENTER para tentar novamente.")
+
 
 if __name__ == "__main__":
     menu()
