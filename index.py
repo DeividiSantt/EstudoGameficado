@@ -4,8 +4,7 @@ import os
 from datetime import datetime, timedelta
 
 DATA_FILE = "progresso.json"
-# Marcos a cada 1 hora até 1000h (pode mudar se quiser)
-MARCOS = list(range(1, 1001))  
+MARCOS = list(range(1, 1001))  # Marcos de 1h até 1000h
 
 def limpar_terminal():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -52,7 +51,6 @@ def estudar():
     dados = carregar_dados()
     dados["total_segundos"] += duracao
 
-    # Salvar sessão
     dados["sessoes"].append({
         "inicio": datetime.fromtimestamp(inicio).isoformat(),
         "fim": datetime.fromtimestamp(fim).isoformat(),
@@ -94,14 +92,14 @@ def ver_historico():
 
     print(f"\n⏳ Total estudado: {formatar_tempo(dados['total_segundos'])}")
     print(f"📆 Horas estudadas nesta semana: {horas_semana}h {minutos_semana}min")
-    print(f"💎 Gemas disponíveis: {dados['gemas']}")
+    print(f"💎 Gemas disponíveis: {dados['gemas']:.1f}")
     print(f"🏆 Recompensas conquistadas: {dados['recompensas_conquistadas']}")
     print(f"📝 Exercícios feitos: {dados['exercicios']}")
     print(f"🚀 Projetos feitos: {dados['projetos']}")
 
 def trocar_gemas():
     dados = carregar_dados()
-    print(f"\n💎 Você tem {dados['gemas']} gema(s).")
+    print(f"\n💎 Você tem {dados['gemas']:.1f} gema(s).")
     print("Escolha uma recompensa:")
     print("1. Jogar videogame (2 gemas)")
     print("2. Ver série (1 gema)")
@@ -146,31 +144,25 @@ def registrar_bonus():
 
     # Calcular gemas bônus
     gemas_bonus = ex * 0.2 + pr * 3
-    gemas_bonus_int = int(gemas_bonus)  # Só inteiros
-    if gemas_bonus_int > 0:
-        dados["gemas"] += gemas_bonus_int
-        print(f"🎉 Você ganhou {gemas_bonus_int} gema(s) de bônus!")
+    dados["gemas"] += gemas_bonus
 
     salvar_dados(dados)
+    print(f"🎉 Você ganhou {gemas_bonus:.1f} gema(s) de bônus!")
 
 def sincronizar_gemas(dados):
- 
     total_horas = dados["total_segundos"] / 3600
-
-    novos = [m for m in MARCOS 
-             if m <= total_horas and m not in dados["recompensas_conquistadas"]]
+    novos = [m for m in MARCOS if m <= total_horas and m not in dados["recompensas_conquistadas"]]
     if novos:
         dados["recompensas_conquistadas"].extend(novos)
         dados["gemas"] += len(novos)
         salvar_dados(dados)
         print(f"🔄 Sincronização: adicionadas {len(novos)} gema(s) pelos marcos antigos: {novos}")
 
-
 def menu():
     while True:
         limpar_terminal()
         dados = carregar_dados()
-        sincronizar_gemas(dados)   # <== ESSA LINHA É IMPORTANTE
+        sincronizar_gemas(dados)
         horas_total = int(dados['total_segundos'] // 3600)
         minutos_total = int((dados['total_segundos'] % 3600) // 60)
 
@@ -182,7 +174,7 @@ def menu():
         print("5. Sair")
 
         print(f"\n⏳ Total acumulado: {horas_total}h {minutos_total}min")
-        print(f"💎 Gemas disponíveis: {dados['gemas']}")
+        print(f"💎 Gemas disponíveis: {dados['gemas']:.1f}")
         print(f"📝 Exercícios: {dados['exercicios']} | 🚀 Projetos: {dados['projetos']}")
 
         opcao = input("\nEscolha: ")
@@ -205,7 +197,6 @@ def menu():
         else:
             print("Opção inválida.")
             input("\nPressione ENTER para tentar novamente.")
-
 
 if __name__ == "__main__":
     menu()
