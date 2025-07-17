@@ -2,9 +2,31 @@ import time
 import json
 import os
 from datetime import datetime, timedelta
+from git import Repo
 
 DATA_FILE = "progresso.json"
 MARCOS = list(range(1, 1001))  # Marcos de 1h até 1000h
+
+def commit_git(mensagem):
+    try:
+        dados = carregar_dados()
+        token = dados.get("token")
+        if not token:
+            print("⚠️ Token não encontrado no arquivo progresso.json")
+            return
+
+        caminho_repo = os.path.dirname(os.path.abspath(__file__))
+        repo = Repo(caminho_repo)
+
+        remote_url = f"https://{token}@github.com/DeividiSantt/EstudoGameficado"
+        repo.remote(name='origin').set_url(remote_url)
+
+        repo.git.add(update=True)
+        repo.git.commit(allow_empty=True, m=mensagem)
+        repo.remote(name='origin').push()
+        print("✅ Commit enviado para o GitHub.")
+    except Exception as e:
+        print(f"⚠️ Erro ao enviar commit: {e}")
 
 def limpar_terminal():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -33,13 +55,22 @@ def formatar_tempo(segundos):
 
 def calcular_horas_semana(dados):
     agora = datetime.now()
-    inicio_semana = agora - timedelta(days=agora.weekday())  # Segunda-feira
+    inicio_semana = agora - timedelta(days=agora.weekday())
     total_segundos = 0
     for sessao in dados["sessoes"]:
         inicio = datetime.fromisoformat(sessao["inicio"])
         if inicio >= inicio_semana:
             total_segundos += sessao["duracao_segundos"]
     return total_segundos
+
+def verificar_commit_por_hora(dados):
+    total_horas = int(dados["total_segundos"] // 3600)
+    ultima_commitada = dados.get("ultima_hora_commit", 0)
+
+    if total_horas > ultima_commitada:
+        commit_git(f"⏱️ Estudo acumulado: {total_horas}h")
+        dados["ultima_hora_commit"] = total_horas
+        salvar_dados(dados)
 
 def estudar():
     print("\n📚 Iniciando sessão de estudo. Pressione ENTER para encerrar.")
@@ -57,7 +88,6 @@ def estudar():
         "duracao_segundos": duracao
     })
 
-    # Verificar marcos atingidos
     total_horas = dados["total_segundos"] / 3600
     novas_recompensas = [
         m for m in MARCOS
@@ -72,6 +102,7 @@ def estudar():
         print(f"💎 Você ganhou {len(novas_recompensas)} gema(s)!")
 
     salvar_dados(dados)
+    verificar_commit_por_hora(dados)
     print(f"⏱️ Tempo total estudado: {formatar_tempo(dados['total_segundos'])}")
 
 def ver_historico():
@@ -142,7 +173,6 @@ def registrar_bonus():
     dados["exercicios"] += ex
     dados["projetos"] += pr
 
-    # Calcular gemas bônus
     gemas_bonus = ex * 0.2 + pr * 3
     dados["gemas"] += gemas_bonus
 
