@@ -203,9 +203,9 @@ def menu():
         print("4. Registrar exercícios/projetos concluídos")
         print("5. Sair")
 
-        print(f"\n⏳ Total acumulado: {horas_total}h {minutos_total}min")
+        print(f"\n⏳ Total de horas estudadas: {horas_total}h {minutos_total}min")
         print(f"💎 Gemas disponíveis: {dados['gemas']:.1f}")
-        print(f"📝 Exercícios: {dados['exercicios']} | 🚀 Projetos: {dados['projetos']}")
+        print(f"📝 Exercícios completos: {dados['exercicios']} | 🚀 Projetos completos: {dados['projetos']}")
 
         opcao = input("\nEscolha: ")
 
